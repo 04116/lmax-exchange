@@ -368,6 +368,14 @@ public class BusinessLogicProcessor {
         return new HashMap<>(activeOrders);
     }
     
+    public long getProcessedEventCount() {
+        return eventJournal.size();
+    }
+    
+    public long getActiveOrderCount() {
+        return activeOrders.size();
+    }
+    
     /**
      * Demonstrates event sourcing - reconstruct state by replaying events
      */

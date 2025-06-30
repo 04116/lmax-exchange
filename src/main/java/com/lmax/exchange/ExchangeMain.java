@@ -5,8 +5,12 @@ import com.lmax.exchange.disruptor.InputDisruptor;
 import com.lmax.exchange.disruptor.OutputDisruptor;
 import com.lmax.exchange.domain.Order;
 import com.lmax.exchange.events.Event;
+import com.lmax.exchange.http.ExchangeHttpServer;
+import com.lmax.exchange.persistence.BatchedPersistenceProcessor;
+import com.lmax.exchange.persistence.DatabaseConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.vertx.core.Vertx;
 
 import java.math.BigDecimal;
 import java.util.concurrent.CountDownLatch;
@@ -36,6 +40,8 @@ public class ExchangeMain {
     private final BusinessLogicProcessor businessLogicProcessor;
     private final InputDisruptor inputDisruptor;
     private final OutputDisruptor outputDisruptor;
+    private final DatabaseConfig databaseConfig;
+    private final BatchedPersistenceProcessor persistenceProcessor;
     
     public ExchangeMain() {
         logger.info("Initializing LMAX Exchange Architecture...");
@@ -46,10 +52,19 @@ public class ExchangeMain {
         // 2. Create Output Disruptor for publishing events
         this.outputDisruptor = new OutputDisruptor();
         
-        // 3. Wire Business Logic Processor to Output Disruptor
+        // 3. Initialize database configuration
+        this.databaseConfig = DatabaseConfig.fromEnvironment();
+        
+        // 4. Create batched persistence processor
+        this.persistenceProcessor = new BatchedPersistenceProcessor(databaseConfig.getDataSource());
+        
+        // 5. Wire Business Logic Processor to Output Disruptor
         this.businessLogicProcessor.addEventListener(outputDisruptor::publishEvent);
         
-        // 4. Create Input Disruptor for processing orders
+        // 6. Wire Output Disruptor to Persistence Processor
+        this.outputDisruptor.addEventListener(persistenceProcessor);
+        
+        // 7. Create Input Disruptor for processing orders
         this.inputDisruptor = new InputDisruptor(businessLogicProcessor);
         
         logger.info("LMAX Exchange Architecture initialized successfully");
@@ -58,7 +73,10 @@ public class ExchangeMain {
     public void start() {
         logger.info("Starting LMAX Exchange...");
         
-        // Start disruptors
+        // 1. Start persistence processor
+        persistenceProcessor.start();
+        
+        // 2. Start disruptors
         outputDisruptor.start();
         inputDisruptor.start();
         
@@ -68,8 +86,15 @@ public class ExchangeMain {
     public void shutdown() {
         logger.info("Shutting down LMAX Exchange...");
         
+        // 1. Shutdown disruptors
         inputDisruptor.shutdown();
         outputDisruptor.shutdown();
+        
+        // 2. Shutdown persistence processor
+        persistenceProcessor.stop();
+        
+        // 3. Close database connections
+        databaseConfig.close();
         
         logger.info("LMAX Exchange shutdown complete");
     }
@@ -130,25 +155,60 @@ public class ExchangeMain {
     }
     
     public static void main(String[] args) throws InterruptedException {
+        // Check if we should run in demo mode or server mode
+        boolean runDemo = args.length > 0 && "demo".equals(args[0]);
+        
         ExchangeMain exchange = new ExchangeMain();
         
-        try {
+        if (runDemo) {
+            // Demo mode - run demonstration and exit
+            try {
+                exchange.start();
+                
+                // Demonstrate the power of single-threaded processing
+                exchange.demonstrateComplexTransactionProcessing();
+                
+                // Wait a bit for processing
+                Thread.sleep(1000);
+                
+                // Show statistics
+                exchange.printStatistics();
+                
+                // Demonstrate event sourcing
+                exchange.demonstrateEventSourcing();
+                
+            } finally {
+                exchange.shutdown();
+            }
+        } else {
+            // Server mode - start and keep running
             exchange.start();
             
-            // Demonstrate the power of single-threaded processing
-            exchange.demonstrateComplexTransactionProcessing();
+            // Start HTTP server
+            ExchangeHttpServer.start(Vertx.vertx(), 8080, exchange.businessLogicProcessor, exchange.persistenceProcessor)
+                .onSuccess(deploymentId -> 
+                    logger.info("HTTP server started successfully on port 8080"))
+                .onFailure(throwable -> {
+                    logger.error("Failed to start HTTP server", throwable);
+                    System.exit(1);
+                });
             
-            // Wait a bit for processing
-            Thread.sleep(1000);
+            logger.info("LMAX Exchange started in server mode. HTTP API available on port 8080");
+            logger.info("Press Ctrl+C to shutdown...");
             
-            // Show statistics
-            exchange.printStatistics();
+            // Add shutdown hook
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                logger.info("Shutdown signal received");
+                exchange.shutdown();
+            }));
             
-            // Demonstrate event sourcing
-            exchange.demonstrateEventSourcing();
-            
-        } finally {
-            exchange.shutdown();
+            // Keep the main thread alive
+            try {
+                Thread.currentThread().join();
+            } catch (InterruptedException e) {
+                logger.info("Main thread interrupted, shutting down...");
+                exchange.shutdown();
+            }
         }
     }
     

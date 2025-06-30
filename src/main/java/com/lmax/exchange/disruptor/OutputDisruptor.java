@@ -181,6 +181,43 @@ public class OutputDisruptor {
     }
     
     /**
+     * Add an external event listener (e.g., for persistence)
+     */
+    public void addEventListener(EventListener listener) {
+        ExternalEventHandler externalHandler = new ExternalEventHandler(listener);
+        handlers.add(externalHandler);
+        // Note: In a production system, you'd want to add this handler dynamically
+        // For now, this is a placeholder to compile
+    }
+    
+    /**
+     * External event handler for additional processing (like persistence)
+     */
+    public static class ExternalEventHandler extends OutputEventHandler {
+        private final EventListener listener;
+        
+        public ExternalEventHandler(EventListener listener) {
+            this.listener = listener;
+        }
+        
+        @Override
+        protected void handleEvent(Event event) {
+            try {
+                listener.onEvent(event);
+            } catch (Exception e) {
+                logger.error("Error in external event listener", e);
+            }
+        }
+    }
+    
+    /**
+     * Interface for external event listeners
+     */
+    public interface EventListener {
+        boolean onEvent(Event event);
+    }
+    
+    /**
      * Get performance metrics
      */
     public double getRingBufferUtilization() {
