@@ -5,45 +5,32 @@
 
 # Default target
 help:
-	@echo "LMAX Exchange - High Performance Trading System"
-	@echo "=============================================="
+	@echo "=== LMAX Exchange Build System ==="
+	@echo "Core Targets:"
+	@echo "  build               Compile and package the application"
+	@echo "  test                Run unit tests"
+	@echo "  clean               Clean build artifacts"
 	@echo ""
-	@echo "📋 Build & Test:"
-	@echo "  build             - Compile the project"
-	@echo "  test              - Run all tests with debug logging"
-	@echo "  test-clean        - Run tests with INFO level (clean output)"
-	@echo "  test-performance  - Run performance tests with TPS metrics"
-	@echo "  demo             - Run the exchange demo"
-	@echo "  clean            - Clean build artifacts"
+	@echo "Docker Targets:"
+	@echo "  docker-up           Start PostgreSQL and LMAX Exchange"
+	@echo "  docker-down         Stop all containers"
+	@echo "  docker-logs         Show container logs"
+	@echo "  docker-status       Show container status"
 	@echo ""
-	@echo "🐳 Docker Commands:"
-	@echo "  docker-build      - Build Docker image"
-	@echo "  docker-up         - Start PostgreSQL and Exchange services"
-	@echo "  docker-down       - Stop all services"
-	@echo "  docker-logs       - Show application logs"
-	@echo "  docker-status     - Show container status"
+	@echo "Testing Targets:"
+	@echo "  test-light          Light load test (4 threads, 50 connections)"
+	@echo "  test-medium         Medium load test (8 threads, 100 connections)"
+	@echo "  test-heavy          Heavy load test (16 threads, 200 connections)"
+	@echo "  test-all            Run all performance tests sequentially"
 	@echo ""
-	@echo "🚀 Stack Operations:"
-	@echo "  stack-up          - Build and start complete stack"
-	@echo "  stack-down        - Stop complete stack"
-	@echo "  dev-build         - Build for development"
-	@echo "  dev-test          - Full development test cycle"
+	@echo "Monitoring Targets:"
+	@echo "  monitor-help        Show detailed monitoring commands"
+	@echo "  monitor-visualvm    Start VisualVM profiler"
+	@echo "  monitor-jmx         Connect with JConsole"
+	@echo "  monitor-resources   Check CPU/memory usage"
+	@echo "  monitor-logs        Tail application logs"
 	@echo ""
-	@echo "🧪 Performance Testing (wrk):"
-	@echo "  test-wrk-light    - Light load test (4t/50c/30s)"
-	@echo "  test-wrk-medium   - Medium load test (8t/100c/60s)"
-	@echo "  test-wrk-heavy    - Heavy load test (12t/200c/120s)"
-	@echo ""
-	@echo "🗄️ Database Operations:"
-	@echo "  db-connect        - Connect to PostgreSQL"
-	@echo "  db-stats          - Show database statistics"
-	@echo ""
-	@echo "📊 Monitoring:"
-	@echo "  health-check      - Check service health"
-	@echo "  metrics           - Fetch system metrics"
-	@echo "  start-monitoring  - Start Prometheus/Grafana"
-	@echo "  stop-monitoring   - Stop monitoring stack"
-	@echo ""
+	@echo "For detailed monitoring options: make monitor-help"
 
 # Build the project
 build:
@@ -182,4 +169,73 @@ dev-test: test-clean docker-build docker-up
 	@sleep 10
 	@make health-check
 	@make test-wrk-light
-	@make docker-down 
+	@make docker-down
+
+# === MONITORING TARGETS ===
+.PHONY: monitor-visualvm monitor-jmx monitor-resources monitor-help
+
+monitor-help:
+	@echo "=== LMAX Exchange Monitoring ==="
+	@echo "monitor-visualvm     Start VisualVM and connect to LMAX Exchange"
+	@echo "monitor-jmx          Test JMX connectivity" 
+	@echo "monitor-resources    Monitor CPU, memory, and container stats"
+	@echo "monitor-logs         Tail application logs"
+	@echo "monitor-gc           Monitor garbage collection"
+	@echo "monitor-threads      Monitor thread dumps"
+	@echo "test-jmx             Run comprehensive JMX connectivity test"
+	@echo ""
+
+monitor-visualvm:
+	@echo "Starting VisualVM..."
+	@echo "Connect to: localhost:9999"
+	@echo "If VisualVM is not installed, install with: brew install --cask visualvm"
+	@if command -v visualvm >/dev/null 2>&1; then \
+		visualvm --jdkhome $$JAVA_HOME & \
+	else \
+		echo "VisualVM not found. Install with: brew install --cask visualvm"; \
+	fi
+
+monitor-jmx:
+	@echo "Testing JMX connectivity..."
+	@echo "JMX URL: service:jmx:rmi:///jndi/rmi://localhost:9999/jmxrmi"
+	@if command -v jconsole >/dev/null 2>&1; then \
+		echo "Starting JConsole..."; \
+		jconsole localhost:9999 & \
+	else \
+		echo "JConsole not found in PATH"; \
+	fi
+
+monitor-resources:
+	@echo "=== Container Resource Usage ==="
+	@docker stats lmax-exchange --no-stream
+	@echo ""
+	@echo "=== System Resource Usage ==="
+	@echo "CPU Usage:"
+	@top -l 1 | grep "CPU usage" || echo "Could not get CPU usage"
+	@echo ""
+	@echo "Memory Usage:"
+	@top -l 1 | grep "PhysMem" || echo "Could not get memory usage"
+
+monitor-logs:
+	@echo "Tailing LMAX Exchange logs..."
+	@docker logs -f lmax-exchange
+
+monitor-gc:
+	@echo "=== Garbage Collection Monitoring ==="
+	@echo "Add these JVM flags for detailed GC logging:"
+	@echo "-Xlog:gc*:gc.log:time,tags"
+	@echo "-XX:+PrintGCDetails"
+	@echo "-XX:+PrintGCTimeStamps"
+	@echo ""
+	@echo "Current GC info (if available):"
+	@docker exec lmax-exchange sh -c "jstat -gc \$$(pgrep java)" 2>/dev/null || echo "Container not running or jstat not available"
+
+monitor-threads:
+	@echo "=== Thread Dump ==="
+	@docker exec lmax-exchange sh -c "jstack \$$(pgrep java)" 2>/dev/null || echo "Container not running or jstack not available"
+
+test-jmx:
+	@echo "Running JMX connectivity test..."
+	@./scripts/test-jmx-connection.sh
+
+# ... existing code ... 

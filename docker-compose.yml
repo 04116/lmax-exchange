@@ -33,15 +33,15 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: lmax-exchange
-    environment:
-      DB_URL: "jdbc:postgresql://postgres:5432/lmax_exchange"
-      DB_USERNAME: "lmax_user"
-      DB_PASSWORD: "lmax_password"
-      HTTP_PORT: "8080"
-      LOG_LEVEL: "INFO"
-      JAVA_OPTS: "-Xmx2g -Xms1g -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+UseStringDeduplication -XX:+UnlockExperimentalVMOptions"
     ports:
       - "8080:8080"
+      - "9999:9999" # JMX port
+      - "9998:9998" # JMX RMI port
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/lmax_exchange
+      - DB_USERNAME=lmax_user
+      - DB_PASSWORD=lmax_password
+      - JAVA_OPTS=-server -Xms1g -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+UseStringDeduplication -Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.rmi.port=9998 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=127.0.0.1 -Dcom.sun.management.jmxremote.local.only=false
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,7 +55,7 @@ services:
       - lmax-network
     restart: unless-stopped
     volumes:
-      - ./logs:/opt/lmax-exchange/logs
+      - ./logs:/app/logs
 
   # Performance Testing with wrk
   wrk-tester:
