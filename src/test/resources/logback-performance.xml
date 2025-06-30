@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console appender with performance-focused format -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>📊 %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Set root level to WARN to minimize noise -->
+    <root level="WARN">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+    <!-- Only show performance-related output -->
+    <logger name="org.apache.maven" level="OFF"/>
+    <logger name="org.junit" level="OFF"/>
+    <logger name="com.lmax.exchange" level="OFF"/>
+    
+    <!-- Special logger for performance metrics - this will be used in the test -->
+    <logger name="PERFORMANCE" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+</configuration> 

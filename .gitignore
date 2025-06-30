@@ -1,0 +1,46 @@
+# Build artifacts
+*.class
+*.jar
+*.war
+*.ear
+target/
+build/
+out/
+bin/
+
+# Maven
+pom.xml.versionsBackup
+dependency-reduced-pom.xml
+
+# Gradle
+.gradle/
+build.gradle.lockfile
+gradlew
+gradlew.bat
+gradle-wrapper.jar
+gradle-wrapper.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+.classpath
+.project
+.settings/
+*.launch
+
+# Logs
+*.log
+logs/
+
+# Dependency directories
+lib/
+libs/
+.m2/
+.gradle/
+
+# Miscellaneous
+*.swp
+*.swo
+.DS_Store
